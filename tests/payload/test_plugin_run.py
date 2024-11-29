@@ -63,8 +63,6 @@ class TestPayloadRun:
     def run_payload(self, payload: Type[S3PParserBase], _plugin: S3PPlugin, driver: WebDriver, refer: S3PRefer, max_document: int,
                     timeout: int = 2):
         # !WARNING Требуется изменить путь до актуального парсера плагина
-        logging.config.fileConfig(
-            r'C:\Users\Artyom\Downloads\Проверка плагинов\s3p-plugin-parser-thepaypers\tests\dev.logger.conf')
         from src.s3p_plugin_parser_thepaypers.thepaypers import THEPAYPERS
         if isinstance(payload, type(THEPAYPERS)):
             _payload = payload(refer=refer, plugin=_plugin, web_driver=driver, max_count_documents=max_document, last_document=None)
@@ -90,7 +88,7 @@ class TestPayloadRun:
 
         """
         max_docs = 10
-        docs = self.run_payload(fix_payload, fix_s3pPlugin, chrome_driver, fix_s3pRefer, max_docs, 100)
+        docs = self.run_payload(fix_payload, fix_s3pPlugin, chrome_driver, fix_s3pRefer, max_docs, 1000)
 
         # 1. Количество материалов должно быть не меньше параметра максимального числа материалов.
         assert len(docs) == max_docs, f"Payload вернул {len(docs)} материалов. А должен был {max_docs}"
