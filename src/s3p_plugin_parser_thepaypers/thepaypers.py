@@ -2,8 +2,10 @@ import datetime
 import time
 
 import dateparser
+from s3p_sdk.exceptions.parser import S3PPluginParserOutOfRestrictionException, S3PPluginParserFinish
 from s3p_sdk.plugin.payloads.parsers import S3PParserBase
 from s3p_sdk.types import S3PRefer, S3PDocument, S3PPlugin
+from s3p_sdk.types.plugin_restrictions import FROM_DATE, S3PPluginRestrictions
 from selenium.common import NoSuchElementException
 from selenium.webdriver.chrome.webdriver import WebDriver
 from selenium.webdriver.common.by import By
@@ -25,9 +27,9 @@ class THEPAYPERS(S3PParserBase):
 
     HOST = "https://thepaypers.com/news/all"
 
-    def __init__(self, refer: S3PRefer, plugin: S3PPlugin, web_driver: WebDriver, max_count_documents: int = None,
+    def __init__(self, refer: S3PRefer, plugin: S3PPlugin, web_driver: WebDriver, restrictions: S3PPluginRestrictions,
                  last_document: S3PDocument = None):
-        super().__init__(refer, plugin, max_count_documents, last_document)
+        super().__init__(refer, plugin, restrictions)
 
         # Тут должны быть инициализированы свойства, характерные для этого парсера. Например: WebDriver
         self.driver = web_driver
@@ -58,6 +60,7 @@ class THEPAYPERS(S3PParserBase):
 
                 web_link = link.find_element(By.TAG_NAME, 'h3').find_element(By.TAG_NAME, 'a').get_attribute('href')
                 pub_date = dateparser.parse((link.find_element(By.CLASS_NAME, 'source').text.split(' | ')[1]))
+                pub_date = pub_date.replace(tzinfo=None)
                 self.driver.execute_script("window.open('');")
                 self.driver.switch_to.window(self.driver.window_handles[1])
                 self.driver.get(web_link)
@@ -107,7 +110,13 @@ class THEPAYPERS(S3PParserBase):
                                   published=pub_date,
                                   loaded=datetime.datetime.now())
 
-                self._find(doc)
+                try:
+                    self._find(doc)
+                except S3PPluginParserOutOfRestrictionException as e:
+                    if e.restriction == FROM_DATE:
+                        self.logger.debug(f'Document is out of date range `{self._restriction.from_date}`')
+                        raise S3PPluginParserFinish(self._plugin,
+                                                    f'Document is out of date range `{self._restriction.from_date}`', e)
 
                 self.driver.close()
                 self.driver.switch_to.window(self.driver.window_handles[0])
